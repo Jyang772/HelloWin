@@ -1,88 +1,114 @@
-#ifndef UNICODE
-#define UNICODE
-#endif 
-
+﻿// Ex11_01.cpp   Native windows program to display text in a window
 #include <windows.h>
+#include <tchar.h>
 
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK WindowProc(HWND hWnd, UINT message,
+	WPARAM wParam, LPARAM lParam);
 
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow)
+// Listing OFWIN_1
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
+	LPSTR lpCmdLine, int nCmdShow)
 {
-	// Register the window class.
-	const wchar_t CLASS_NAME[] = L"Sample Window Class";
+	WNDCLASSEX WindowClass;     // Structure to hold our window's attributes
 
-	WNDCLASS wc = {};          //Declare WNDCLASS structure
+	//static LPCTSTR szAppName = _T("OFWin");   // Define window class name
+	static wchar_t* szAppName = L"OFWin";
+	HWND hWnd;                                // Window handle
+	MSG msg;                                  // Windows message structure
 
-	wc.lpfnWndProc = WindowProc;
-	wc.hInstance = hInstance;
-	wc.lpszClassName = CLASS_NAME;
+	WindowClass.cbSize = sizeof(WNDCLASSEX);  // Set structure size
+	//   
+	//// Redraw the window if the size changes
+	WindowClass.style = CS_HREDRAW | CS_VREDRAW;
 
-	RegisterClass(&wc);
+	// Define the message handling function
+	WindowClass.lpfnWndProc = WindowProc;
 
-	// Create the window.
+	WindowClass.cbClsExtra = 0;     // No extra bytes after the window class
+	WindowClass.cbWndExtra = 0;     // structure or the window instance
 
-	HWND hwnd = CreateWindowEx(
-		0,                              // Optional window styles.
-		CLASS_NAME,                     // Window class
-		L"Learn to Program Windows",    // Window text
-		WS_OVERLAPPEDWINDOW,            // Window style
+	WindowClass.hInstance = hInstance;        // Application instance handle
 
-		// Size and position
-		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+	//// Set default application icon
+	WindowClass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+	//   
+	//// Set window cursor to be the standard arrow
+	WindowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
 
-		NULL,       // Parent window    
-		NULL,       // Menu
-		hInstance,  // Instance handle
-		NULL        // Additional application data
+	// Set gray brush for background color
+	WindowClass.hbrBackground = static_cast<HBRUSH>(GetStockObject(GRAY_BRUSH));
+
+	WindowClass.lpszMenuName = NULL;          // No menu
+	WindowClass.lpszClassName = szAppName;    // Set class name
+	WindowClass.hIconSm = NULL;               // Default small icon
+
+	// Now register our window class
+	RegisterClassEx(&WindowClass);
+
+	// Now we can create the window
+	hWnd = CreateWindowEx(
+		0,
+		szAppName,                           // the window class name
+		_T("A Basic Window the Hard Way"),   // The window title
+		WS_OVERLAPPEDWINDOW,                 // Window style as overlapped
+		CW_USEDEFAULT,                       // Default screen position of upper left
+		CW_USEDEFAULT,                       // corner of our window as x,y.
+		CW_USEDEFAULT,                       // Default window size width ...
+		CW_USEDEFAULT,                       // ... and height
+		NULL,                                // No parent window
+		NULL,                                // No menu
+		hInstance,                           // Program Instance handle
+		NULL                                 // No window creation data
 		);
 
-	if (hwnd == NULL)
+	ShowWindow(hWnd, nCmdShow);                  // Display the window
+	UpdateWindow(hWnd);                          // Redraw window client area 
+
+	// The message loop
+	while (GetMessage(&msg, NULL, 0, 0) == TRUE)  // Get any messages
 	{
-		return 0;
+		TranslateMessage(&msg);                    // Translate the message
+		DispatchMessage(&msg);                     // Dispatch the message
 	}
 
-	ShowWindow(hwnd, nCmdShow);
-
-	// Run the message loop.
-
-	MSG msg = {};
-	while (GetMessage(&msg, NULL, 0, 0))
-	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
-	}
-
+	//  return static_cast<int>(msg.wParam);         // End, so return to Windows
 	return 0;
 }
 
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+// Listing OFWIN_2
+LRESULT CALLBACK WindowProc(HWND hWnd, UINT message,
+	WPARAM wParam, LPARAM lParam)
 {
-	switch (uMsg)
-	{
 
-	case WM_CLOSE:
-		if (MessageBox(hwnd, L"Really quit?", L"My application", MB_OKCANCEL) == IDOK)
-		{
-			DestroyWindow(hwnd);
-		}
-		// Else: User canceled. Do nothing.
+	switch (message)                              // Process selected messages
+	{
+	case WM_PAINT:                             // Message is to redraw the window
+		HDC hDC;                                 // Display context handle
+		PAINTSTRUCT PaintSt;                     // Structure defining area to be drawn
+		RECT aRect;                              // A working rectangle
+		hDC = BeginPaint(hWnd, &PaintSt);        // Prepare to draw the window
+
+		// Get upper left and lower right of client area
+		GetClientRect(hWnd, &aRect);
+
+		SetBkMode(hDC, TRANSPARENT);             // Set text background mode
+
+		// Now draw the text in the window client area
+		DrawText(
+			hDC,                              // Device context handle
+			_T("Mr. Mead was here!"),
+			-1,                               // Indicate null terminated string
+			&aRect,                           // Rectangle in which text is to be drawn
+			DT_SINGLELINE |                    // Text format - single line
+			DT_CENTER |                        //             - centered in the line
+			DT_VCENTER);                      //             - line centered in aRect
+
+		EndPaint(hWnd, &PaintSt);                // Terminate window redraw operation
 		return 0;
 
-	case WM_DESTROY:
+	case WM_DESTROY:                           // Window is being destroyed
 		PostQuitMessage(0);
 		return 0;
-
-	case WM_PAINT:
-		{
-			PAINTSTRUCT ps;
-			HDC hdc = BeginPaint(hwnd, &ps);
-
-			FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
-
-			EndPaint(hwnd, &ps);
-				 }
-		return 0;
-
 	}
-	return DefWindowProc(hwnd, uMsg, wParam, lParam);
+	return DefWindowProc(hWnd, message, wParam, lParam);
 }
